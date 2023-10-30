@@ -9,6 +9,33 @@
 	#include "../beatmap_parser/parser.h"
 #endif
 
+// game //
+
+typedef struct {
+	int index;
+	HitObject* hitObject;
+	HitObject* lastHitObject;
+	double deltaTime;
+	double startTime;
+	double endTime;
+	int type; // 0 OsuDifficultyHitObject 1 TaikoDifficultyHitObject 2 CatchDifficultyHitObject 3 ManiaDifficultyHitObject
+	void* object;
+} DifficultyHitObject;
+
+typedef struct {
+	double skillMultiplier;
+	double strainDecayBase;
+	double currentStrain;
+} StrainDecaySkill;
+
+typedef struct {
+	double decayWeight;
+	int sectionLength;
+	double currentSectionPeak;
+	double currentSectionEnd;
+	dList* strainPeaks;
+} StrainSkill;
+
 // osu //
 
 typedef struct {
@@ -24,82 +51,215 @@ typedef struct {
 	double travelTime;
 	double angle;
 	double hitWindowGreat;
+	HitObject* lastLasthitObject;
+	HitObject* lastHitObject;
 } OsuDifficultyHitObject;
 
 typedef struct {
-	double skillMultiplier;
-	double strainDecayBase;
-	double currentStrain;
 	int withSliders;
-} OsuAimStrainSkill;
-
-typedef struct {
 	double skillMultiplier;
 	double strainDecayBase;
 	double currentStrain;
-	int reducedSectionCount;
-	double difficultyMultiplier;
-	double currentRhythm;
-} OsuSpeedStrainSkill;
+} OsuAimSkill;
 
 typedef struct {
-	double skillMultiplier;
-	double strainDecayBase;
-	double currentStrain;
 	int hasHiddenMod;
+	double skillMultiplier;
+	double strainDecayBase;
+	double currentStrain;
+	 // OsuStrainSkill* osuStrainSkill = NULL;
 } OsuFlashLightSkill;
 
 typedef struct {
+	double skillMultiplier;
+	double strainDecayBase;
+	double currentStrain;
+	double currentRhythm;
 	int reducedSectionCount;
 	double difficultyMultiplier;
+} OsuSpeedSkill;
+
+typedef struct {
+	double defaultDifficultyMultiplier;
+	int reducedSectionCount;
 	double reducedStrainBaseline;
-	double defaultDifficultyMulitplier;
-	int type; // 0 OsuAimStrainSkill 1 OsuSpeedStrainSkill
-	void* osuStrainSkill;
+	double difficultyMultiplier;
 } OsuStrainSkill;
+
+typedef struct {
+	OsuStrainSkill* osuStrainSkill;
+	StrainSkill* strainSkill;
+	int type; // 0 OsuAimSkill 1 OsuFlashLightSkill 2 OsuSpeedSkill
+	void* skill;
+	int mods;
+} OsuSkill;
 
 // taiko //
 
-// fruits //
-
-// mania //
-
-// game //
+typedef struct {
+	double difficulty;
+	double ratio;
+} TaikoDifficultyHitObjectRhythm;
 
 typedef struct {
+	int maxRepetitionInterval;
+	List* alternatingMonoPatterns; // AlternatingMonoPattern*
+	TaikoDifficultyHitObject* firstHitObject;
+	RepeatingHitPatterns* previous;
+	int repetitionInterval;
+} RepeatingHitPatterns;
+
+typedef struct {
+	List* monoStreaks; // MonoStreak*
+	RepeatingHitPatterns* parent;
 	int index;
-	HitObject* hitObject;
-	HitObject* lastHitObject;
-	HitObject* lastLastHitObject;
-	double deltaTime;
-	double startTime;
-	double endTime;
-	int type; // 0 OsuDifficultyHitObject 1 TaikoDifficultyHitObject 2 FruitsDifficultyHitObject 3 ManiaDifficultyHitObject
-	void* object;
-} DifficultyHitObject;
+	TaikoDifficultyHitObject* firstHitObject;
+} AlternatingMonoPattern;
+
+typedef struct {
+	List* hitObjects; // TaikoDifficultyHitObject*
+	AlternatingMonoPattern* parent;
+	int index;
+	TaikoDifficultyHitObject* firstHitObject;
+	TaikoDifficultyHitObject* lastHitObject;
+	int hitType; // 0 Centre 1 Rim
+	int runLength;
+} MonoStreak;
+
+typedef struct {
+	// From TaikoDifficultyHitObjectColour
+	MonoStreak* monoStreak;
+	AlternatingMonoPattern* alternatingMonoPattern;
+	RepeatingHitPatterns* repeatingHitPattern;
+	TaikoDifficultyHitObject* previousColourChange;
+	TaikoDifficultyHitObject* nextColourChange;
+} TaikoDifficultyHitObjectColour;
+
+typedef struct {
+	// From TaikoDifficultyHitObject
+	List* monoDifficultyHitObjects; // TaikoDifficultyHitObject*
+	int monoIndex;
+	List* noteDifficultyHitObjects; // TaikoDifficultyHitObject*
+	int noteIndex;
+	TaikoDifficultyHitObjectRhythm* rhythm;
+	TaikoDifficultyHitObjectColour* colour;
+} TaikoDifficultyHitObject;
 
 typedef struct {
 	double skillMultiplier;
 	double strainDecayBase;
-	double currentStrain;
-	int type; // 0 FruitsMovementSkill 1 ManiaStrainSkill 2 TaikoRhythmSkill 3 TaikoColourSkill 4 TaikoStaminaSkill
-	void* strainDecaySkill;
-} StrainDecaySkill;
+} TaikoColourSkill;
 
 typedef struct {
+	double skillMultiplier;
+	double strainDecayBase;
+	double strainDecay;
+	int rhythmHistoryMaxLength;
+	Queue* rhythmHistory; // TaikoDifficultyHitObject*
+	double currentStrain;
+	int notesSinceRhythmChange;
+} TaikoRhythmSkill;
+
+typedef struct {
+	double skillMultiplier;
+	double strainDecayBase;
+} TaikoStaminaSkill;
+
+typedef struct {
+	double finalMultiplier;
+	double colourSkillMultiplier;
+	double rhythmSkillMultiplier;
+	double staminaSkillMultiplier;
+	TaikoColourSkill* colour;
+	TaikoRhythmSkill* rhythm;
+	TaikoStaminaSkill* stamina;
+	double colourDifficultyValue;
+	double rhythmDifficultyValue;
+	double staminaDifficultyValue;
+	// StrainDecaySkill* strainDecaySkill = NULL;
+	// StrainSkill* strainSkill = NULL;
+} TaikoPeaksSkill;
+
+typedef struct {
+	StrainDecaySkill* strainDecaySkill;
+	StrainSkill* strainSkill;
+	int type; // 0 TaikoColourSkill 1 TaikoRhythmSkill 2 TaikoStaminaSkill 3 TaikoPeaksSkill
+	void* skill;
+	int mods;
+} TaikoSkill;
+
+// catch //
+
+/*
+typedef struct {
+	From PalpableCatchHitObject
+	float distanceToHyperDash;
+	HitObjectProperty<bool> hyperDash;
+	Bindable<bool> hyperDashBindable;
+	int hyperDash;
+	CatchHitObject* hyperDashTarget;
+	...
+} PalpableCatchHitObject;
+*/
+
+typedef struct {
+	float normalizedHitobjectRadius;
+	// PalpableCatchHitObject* baseObject;
+	// PalpableCatchHitObject* lastObject;
+	float normalizedPosition;
+	float lastNormalizedPosition;
+	double strainTime;
+} CatchDifficultyHitObject;
+
+typedef struct {
+	float absolutePlayerPositioningError;
+	float normalizedHitobjectRadius;
+	double direction_changeBonus;
+	double skillMultiplier;
+	double strainDecayBase;
 	double decayWeight;
 	int sectionLength;
-	double currentSectionPeak;
-	double currentSectionEnd;
-	dList* strainPeaks;
-	int type; // 0 OsuFlashLightSkill 1 OsuStrainSkill 2 StrainDecaySkill
-	void* strainSkill;
-} StrainSkill;
+	float halfCatcherWidth;
+	float lastPlayerPosition;
+	float lastDistanceMoved;
+	double lastStrainTime;
+	double catcherSpeedMultiplier;
+} CatchMovementSkill;
 
 typedef struct {
-	int mods; // 0 NF 1 SD 2 PF 3 EZ 4 HR 5 HD 6 DT 7 NC 8 HT 9 FL 10 SO 11 FI 12 MR
-	int type; // 0 TaikoPeaks 1 StrainSkill
+	StrainDecaySkill* strainDecaySkill;
+	StrainSkill* strainSkill;
+	int type; // 0 CatchMovementSkill
 	void* skill;
-} Skill;
+	int mods;
+} CatchSkill;
+
+// mania //
+
+/* no additional params
+typedef struct {
+
+} ManiaDifficultyHitObject; */
+
+typedef struct {
+	double individualDecayBase;
+	double overallDecayBase;
+	double releaseThreshold;
+	double skillMultiplier;
+	double strainDecayBase;
+	dList* startTimes;
+	dList* endTimes;
+	dList* individualStrains;
+	double individualStrain;
+	double overallStrain;
+} ManiaStrainSkill;
+
+typedef struct {
+	StrainDecaySkill* strainDecaySkill;
+	StrainSkill* strainSkill;
+	int type; // 0 ManiaStrainSkill
+	void* skill;
+	int mods;
+} ManiaSkill;
 
 #endif
